@@ -31,9 +31,22 @@ header{height:74px;display:flex;align-items:center;gap:10px;padding:0 14px;posit
 #hint{ text-align:center;font-size:20px;font-weight:900;color:#fff;text-shadow:0 2px 0 rgba(58,51,87,.25);margin:2px 0 6px;animation:hintbob 1.2s ease-in-out infinite}
 @keyframes hintbob{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
 #grid{flex:1;position:relative;min-height:0;overflow:hidden;border-radius:24px}
-.drop{position:absolute;top:-150px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;animation:dropfall var(--d) linear forwards;left:var(--x);z-index:5;background:none;border:none;padding:6px}
+.drop{position:absolute;top:0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;left:var(--x);z-index:5;background:none;border:none;padding:6px;will-change:transform}
 .drop .de{font-size:var(--s);line-height:1;filter:drop-shadow(0 4px 3px rgba(58,51,87,.2));display:block;animation:dsway 1.7s ease-in-out infinite}
-.drop .dw{font-size:15px;font-weight:900;color:#fff;text-shadow:0 2px 0 rgba(58,51,87,.3)}
+.drop .dw{font-size:15px;font-weight:900;color:#4a4370;text-shadow:0 1px 0 rgba(255,255,255,.8)}
+body.glow{background:linear-gradient(180deg,#141034,#0a0a24)}
+body.glow #grid{background:radial-gradient(2px 2px at 12% 20%,#fff8,transparent),radial-gradient(2px 2px at 68% 12%,#fff7,transparent),radial-gradient(1.5px 1.5px at 40% 55%,#fff6,transparent),radial-gradient(2px 2px at 85% 70%,#fff7,transparent),radial-gradient(1.5px 1.5px at 22% 80%,#fff6,transparent)}
+body.glow #hint{color:#cfe9ff}
+body.glow .drop .de{filter:drop-shadow(0 0 9px #7ef9ff) drop-shadow(0 0 20px #b17bff)}
+body.glow .drop .dw{color:#eae4ff;text-shadow:0 0 8px #7ef9ff}
+body.glow .jar{background:#241d4d;color:#ffe9a3}
+body.glow .tab{background:rgba(36,29,77,.7);color:#cfc6ff}
+body.glow .tab.on{background:#3a2f7d;color:#fff}
+#bigR{position:fixed;inset:0;z-index:120;display:none;place-items:center;background:rgba(58,51,87,.5)}
+#bigR.on{display:grid}
+#bigR .card{background:#fff;border-radius:34px;padding:34px 40px;text-align:center;animation:plop .4s ease;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+#bigR .t{font-size:96px;line-height:1;animation:hintbob 1s ease-in-out infinite}
+#bigR .m{font-size:24px;font-weight:900;color:#7a6fb0;margin-top:8px}
 @keyframes dropfall{to{transform:translateY(118vh)}}
 @keyframes dsway{0%,100%{transform:rotate(-6deg) translateX(-4px)}50%{transform:rotate(6deg) translateX(4px)}}
 .bub{position:relative;background:radial-gradient(circle at 32% 28%,#ffffff,#f2f7ff 55%,#dbe9ff);border-radius:32px;box-shadow:0 8px 0 rgba(58,51,87,.14), inset 0 -8px 14px rgba(120,150,220,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:900;overflow:hidden;animation:bob 3.2s ease-in-out infinite}
@@ -99,6 +112,7 @@ header{height:74px;display:flex;align-items:center;gap:10px;padding:0 14px;posit
   <div class="tabs">
     <button class="tab on" id="tabPlay">🎈 Play</button>
     <button class="tab" id="tabStick">🖼 My stickers</button>
+    <button class="tab" id="thmBtn" aria-label="Theme">🌙</button>
   </div>
   <div class="jar" id="jar">⭐ <span id="jarN">0</span></div>
 </header>
@@ -122,10 +136,11 @@ header{height:74px;display:flex;align-items:center;gap:10px;padding:0 14px;posit
 </div>
 
 <div id="burst"></div>
+<div id="bigR"><div class="card"><div class="t">🏆</div><div class="m" id="bigM"></div></div></div>
 <button id="gearBtn" aria-label="Grown-ups">⚙</button>
 <div id="gpanel"><div id="gcard">
   <h2>Grown-ups corner</h2>
-  <p>Pop & Play v1.3 · ages 1–2 · a Boundless learning studio.<br>Every tap is spoken aloud. Stickers earn a sticker-scene. No ads, no logins — progress stays on this device.</p>
+  <p>Pop & Play v1.4 · ages 1–2 · a Boundless learning studio.<br>Every tap is spoken aloud. Stickers earn a sticker-scene. No ads, no logins — progress stays on this device.</p>
   <button id="resetBtn">Start fresh (reset all)</button>
   <button class="soft" id="gClose">Close</button>
 </div></div>
@@ -134,7 +149,7 @@ header{height:74px;display:flex;align-items:center;gap:10px;padding:0 14px;posit
 /* ================= POP & PLAY v1.0 ================= */
 const $=id=>document.getElementById(id);
 const KEY='popplay.v1';
-let S=Object.assign({n:0,inv:[],board:[]},(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}})());
+let S=Object.assign({n:0,inv:[],board:[],thm:'day'},(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}})());
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 /* ---- things to tap ---- */
@@ -192,37 +207,76 @@ function confetti(n){
 function burst(t){const b=$('burst');b.textContent=t;b.classList.remove('go');void b.offsetWidth;b.classList.add('go');}
 
 /* ---- sticker jar ---- */
+function bigReward(){
+  const m=$('bigR');$('bigM').textContent=S.n+' stickers! WOW!';
+  m.classList.add('on');confetti(40);
+  pop(500);setTimeout(()=>pop(700),150);setTimeout(()=>pop(950),300);
+  speak('WOW! '+S.n+' stickers! You are AMAZING! Here is a trophy!');
+  if(S.inv.length<400)S.inv.push('🏆');
+  setTimeout(()=>m.classList.remove('on'),2800);
+}
 function award(emoji,k){
+  const prev=S.n;
   S.n+=k; if(S.inv.length<400)for(let i=0;i<k;i++)S.inv.push(emoji);
   save();
+  if(Math.floor(S.n/20)>Math.floor(prev/20))setTimeout(bigReward,650);
   $('jarN').textContent=S.n;
   const j=$('jar');j.classList.remove('bump');void j.offsetWidth;j.classList.add('bump');
 }
 
 /* ---- play grid ---- */
 let taps=0, nextBalloon=5+Math.floor(Math.random()*4), firstTap=false;
+let DROPS=[], BOOST=1, boosting=false;
 function spawnDrop(){
   if($('playPage').style.display==='none'||document.hidden)return;
-  if(document.querySelectorAll('.drop').length>=7)return;
+  if(DROPS.length>=7)return;
   const [e,w]=randItem();
+  const jumbo=Math.random()<0.25;                    // some items much larger
+  const size=jumbo?(96+Math.random()*32):(48+Math.random()*36);
+  const slow=Math.random()<0.5;                      // half fall slower for little ones
+  const vy=slow?(26+Math.random()*20):(58+Math.random()*44); // px per second
   const b=document.createElement('button');b.className='drop';
-  b.style.setProperty('--x',(3+Math.random()*80)+'vw');
-  b.style.setProperty('--s',(58+Math.random()*36)+'px');
-  b.style.setProperty('--d',(5.5+Math.random()*3.5)+'s');
+  b.style.setProperty('--x',(3+Math.random()*78)+'vw');
+  b.style.setProperty('--s',size+'px');
   b.innerHTML=`<span class="de">${e}</span><span class="dw">${w}</span>`;
+  const d={el:b,y:-150,vy,done:false};
   const hit=()=>{
-    if(b.dataset.done)return;b.dataset.done=1;
+    if(d.done)return;d.done=true;
     if(!firstTap){firstTap=true;$('hint').style.display='none';}
     speak(w+'!'); pop(420+Math.random()*300); confetti(10); burst(e);
     award(e,1); taps++;
     b.style.animation='popout .32s ease forwards';
-    setTimeout(()=>b.remove(),330);
+    setTimeout(()=>{b.remove();DROPS=DROPS.filter(x=>x!==d);},330);
     if(taps>=nextBalloon){taps=0;nextBalloon=5+Math.floor(Math.random()*5);setTimeout(launchBalloon,700);}
   };
-  b.addEventListener('pointerdown',hit);
-  b.addEventListener('animationend',ev=>{ if(ev.animationName==='dropfall')b.remove(); });
-  $('grid').appendChild(b);
+  b.addEventListener('pointerdown',ev=>{ev.stopPropagation();hit();});
+  $('grid').appendChild(b);DROPS.push(d);
 }
+let lastT=0;
+function fall(t){
+  const dt=Math.min(0.05,(t-lastT)/1000||0);lastT=t;
+  if(!boosting)BOOST=Math.max(1,BOOST-dt*2.2);
+  const H=$('grid').clientHeight||500;
+  for(const d of [...DROPS]){
+    if(d.done)continue;
+    d.y+=d.vy*BOOST*dt;
+    d.el.style.transform='translateY('+d.y+'px)';
+    if(d.y>H+80){d.el.remove();DROPS=DROPS.filter(x=>x!==d);}
+  }
+  requestAnimationFrame(fall);
+}
+requestAnimationFrame(fall);
+/* little swipes on the sky make the rain hurry */
+(function(){
+  const g=$('grid');let py=null;
+  g.addEventListener('pointerdown',e=>{py=e.clientY;});
+  g.addEventListener('pointermove',e=>{
+    if(py==null)return;
+    if(e.clientY-py>14){boosting=true;BOOST=3.4;clearTimeout(fall.bt);fall.bt=setTimeout(()=>boosting=false,650);py=e.clientY;}
+  });
+  g.addEventListener('pointerup',()=>py=null);g.addEventListener('pointercancel',()=>py=null);
+  g.addEventListener('wheel',e=>{if(e.deltaY>0){boosting=true;BOOST=3.4;clearTimeout(fall.bt);fall.bt=setTimeout(()=>boosting=false,650);}},{passive:true});
+})();
 function fillGrid(){ for(let i=0;i<3;i++)setTimeout(spawnDrop,i*500); }
 setInterval(spawnDrop,950);
 function launchBalloon(){
@@ -285,6 +339,11 @@ $('gearBtn').addEventListener('pointerup',()=>clearTimeout(gT));
 $('gearBtn').addEventListener('pointerleave',()=>clearTimeout(gT));
 $('gClose').onclick=()=>$('gpanel').classList.remove('on');
 $('resetBtn').onclick=()=>{S={n:0,inv:[],board:[]};save();$('jarN').textContent=0;renderTray();renderBoard();$('gpanel').classList.remove('on');};
+
+/* ---- theme ---- */
+function applyThm(){document.body.classList.toggle('glow',S.thm==='glow');$('thmBtn').textContent=S.thm==='glow'?'🌞':'🌙';}
+$('thmBtn').onclick=()=>{S.thm=S.thm==='glow'?'day':'glow';save();applyThm();pop(S.thm==='glow'?300:640);speak(S.thm==='glow'?'Glow time!':'Day time!');};
+applyThm();
 
 /* ---- boot ---- */
 $('jarN').textContent=S.n;
